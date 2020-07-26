@@ -6,7 +6,6 @@ Why XamarinRazor?
 3. But razor syntax is just great
 4. What about Microsoft MobileBlazorBinding. Yes I know it exist. 
 	4.1. But it is still a pain to generate a custom component with it. I mean you have to write two classes, (one a component with setter and getters and the other its handler) and then start mapping properties from the Component to the Xamarin.Forms element from within the handler. I prefer not to write any code to add a new component (lazy me). So [here](https://github.com/sake402/LivingThing.Tools.XamarinRazor) is a tool that simply generate the components from an assembly. We also have a DefaultNativeElementAdapter that arrange the hierachy of any Xamarin elements based on the razor syntax. You can also roll out your own IElementAdapter and register into the DI container.
-	4.2. Microsoft may decide to kill it, right?
 
 So how do we use it?
 ---
