@@ -12,6 +12,7 @@ namespace LivingThing.Core.Frameworks.XamarinRazor.Forms
         public AbsoluteLayout(Xamarin.Forms.AbsoluteLayout _element):base(_element)
         {
         }
+
 		[Parameter] public System.EventHandler<Xamarin.Forms.FocusEventArgs> Focused { set => P.Focused += value; }
 		EventCallback<Xamarin.Forms.FocusEventArgs> _onFocused;
 		[Parameter] public EventCallback<Xamarin.Forms.FocusEventArgs> OnFocused { set { if (!_onFocused.HasDelegate) { P.Focused += (s, e) => _onFocused.InvokeAsync(e); } _onFocused = value; } }

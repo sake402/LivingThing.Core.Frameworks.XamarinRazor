@@ -20,7 +20,7 @@ namespace LivingThing.Core.Frameworks.XamarinRazor
 
         public override Element GetOrCreate()
         {
-            var element = Razor.Create<TComponent, Element>(ServiceProvider, null, ParameterSetter).Result;
+            var element = Razor.CreateAsync<TComponent, Element>(ServiceProvider, null, ParameterSetter).Result.Element;
             return element;
         }
     }

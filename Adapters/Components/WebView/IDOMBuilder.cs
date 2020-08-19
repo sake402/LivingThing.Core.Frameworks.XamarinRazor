@@ -32,6 +32,7 @@ namespace LivingThing.Core.Frameworks.XamarinRazor.Adapters.Components.WebView
         /// <param name="textSequence"></param>
         /// <param name="text"></param>
         int InsertText(int parentId, int textSequence, string text);
+        int UpdateText(int parentId, int textSequence, string text);
         /// <summary>
         /// Adds markup to a node identified by parentId, texts are sorted withing the parent acording to textSequence
         /// </summary>
@@ -39,6 +40,7 @@ namespace LivingThing.Core.Frameworks.XamarinRazor.Adapters.Components.WebView
         /// <param name="markupSequence"></param>
         /// <param name="text"></param>
         int InsertMarkup(int parentId, int markupSequence, string markup);
+        int UpdateMarkup(int parentId, int markupSequence, string markup);
         /// <summary>
         /// Remove from a node identified by parentId, a content at index
         /// </summary>

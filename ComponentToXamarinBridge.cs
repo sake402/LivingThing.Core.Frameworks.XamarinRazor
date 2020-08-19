@@ -55,7 +55,7 @@ namespace LivingThing.Core.Frameworks.XamarinRazor
                 var visualElement = P as NavigableElement;
                 if (visualElement != null)
                 {
-                    var values = value.Split(new char[] { ' ', ',' });
+                    var values = value?.Split(new char[] { ' ', ',' }) ?? new string[] { };
                     visualElement.StyleClass = values.ToList();
                 }
             }

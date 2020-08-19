@@ -27,7 +27,7 @@ namespace LivingThing.Core.Frameworks.XamarinRazor
             throw new NotImplementedException();
         }
     }
-    public class BaseComponent:ComponentBase
+    public class BaseComponent:ComponentBase, IDisposable
     {
         //public static Binding Binding<TViewModel, TTarget>(TViewModel viewModel, Expression<Func<TViewModel, TTarget>> exp)
         //{
@@ -76,6 +76,11 @@ namespace LivingThing.Core.Frameworks.XamarinRazor
         public static Thickness Thickness(double left, double top, double right, double bottom)
         {
             return new Thickness(left, top, right, bottom);
+        }
+
+        public void Dispose()
+        {
+
         }
     }
 }

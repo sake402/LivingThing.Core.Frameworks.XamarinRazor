@@ -17,6 +17,7 @@ namespace LivingThing.Core.Frameworks.XamarinRazor.Forms
     {
         [Parameter] public RenderFragment Head { get; set; }
         [Parameter] public RenderFragment Body { set => ChildContent = value; }
+        [Parameter] public string BaseUrl { get; set; }
         //dont render the ChildContent yet
         protected override void BuildRenderTree(RenderTreeBuilder __builder)
         {
@@ -36,39 +37,15 @@ namespace LivingThing.Core.Frameworks.XamarinRazor.Adapters.Components.WebView
     {
         public ChildContentViewSource(XRF.WebView webView, IComponentAdapterController adapter)
         {
-            WebView = webView;
-            RootAdapter = adapter;
+            webViewRenderer = new WebViewRenderer(adapter.ServiceProvider, adapter.ServiceProvider.GetRequiredService<ILoggerFactory>(), webView);
         }
 
-        IComponentAdapterController RootAdapter { get; }
-        XRF.WebView WebView { get; }
+        WebViewRenderer webViewRenderer;
+
         public override async void Load(IWebViewDelegate renderer)
         {
-            var webViewRenderer = new WebViewRenderer(RootAdapter.ServiceProvider, RootAdapter.ServiceProvider.GetRequiredService<ILoggerFactory>(), WebView);
-            var dom = await webViewRenderer.AddComponent<HtmlWrapper>((c) =>
-            {
-                c.Head = WebView.Head;
-                c.ChildContent = WebView.ChildContent;
-                WebView.Wrapper = c;
-            });
-            WebView.P.Navigating += (s, e) =>
-            {
-                if (e.Url == "http://xamarinrazor")
-                {
-                    //renderer.LoadHtml(dom, "xamarinrazor://webview");
-                }
-                else if (e.Url.Contains("__event__"))
-                {
-                    var uri = new Uri(e.Url);
-                    var query = uri.Query;
-                    var collection = HttpUtility.ParseQueryString(query);
-                    var eventId = int.Parse(collection["id"]);
-                    var eventParam = HttpUtility.UrlDecode(collection["v"]);
-                    webViewRenderer.DOMBuilder.DispatchEvent(eventId, eventParam);
-                    e.Cancel = true;
-                }
-            };
-            renderer.LoadHtml(dom, "http://xamarinrazor");
+            var dom = await webViewRenderer.Render();
+            renderer.LoadHtml(dom, "file:///xamarinrazor");
         }
     }
 

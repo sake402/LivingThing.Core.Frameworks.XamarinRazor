@@ -11,7 +11,7 @@ namespace LivingThing.Core.Frameworks.XamarinRazor.Adapters.Components.WebView
             Markup = markup;
         }
 
-        public string Markup { get; }
+        public string Markup { get; set; }
         public override string ToString()
         {
             return Markup;

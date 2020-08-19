@@ -135,6 +135,11 @@ namespace LivingThing.Core.Frameworks.XamarinRazor.Adapters.Components.WebView
                                         CurrentNode = WebViewRenderer.DOMBuilder.Parent(CurrentNode);
                                     }
                                     break;
+                                case RenderTreeFrameType.ElementReferenceCapture:
+                                    ElementReference reference = new ElementReference(CurrentNode.ToString());
+                                    //WebViewRenderer.DOMBuilder.Reference();
+                                    frame.ElementReferenceCaptureAction(reference);
+                                    break;
                                 case RenderTreeFrameType.None:
                                     break;
                                 default:
@@ -144,7 +149,7 @@ namespace LivingThing.Core.Frameworks.XamarinRazor.Adapters.Components.WebView
                         break;
                     case RenderTreeEditType.UpdateText:
                         {
-                            WebViewRenderer.DOMBuilder.InsertText(CurrentNode, frame.Sequence, frame.TextContent);
+                            WebViewRenderer.DOMBuilder.UpdateText(CurrentNode, frame.Sequence, frame.TextContent);
                         }
                         break;
                     case RenderTreeEditType.RemoveFrame:
@@ -154,7 +159,7 @@ namespace LivingThing.Core.Frameworks.XamarinRazor.Adapters.Components.WebView
                         break;
                     case RenderTreeEditType.UpdateMarkup:
                         {
-                            WebViewRenderer.DOMBuilder.InsertText(CurrentNode, frame.Sequence, frame.TextContent);
+                            WebViewRenderer.DOMBuilder.UpdateMarkup(CurrentNode, frame.Sequence, frame.TextContent);
                         }
                         break;
                     case RenderTreeEditType.SetAttribute:

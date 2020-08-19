@@ -36,7 +36,7 @@ class WebViewRenderer {
         const keys = Object.getOwnPropertyNames(dictionary);
         return keys.map(k => dictionary[k]);
     }
-    parseMarkup(markup:string): Node[] {
+    parseMarkup(markup: string): Node[] {
         const parser = new DOMParser();
         let dom = parser.parseFromString(markup, "text/html");
         if (!dom) {
@@ -57,6 +57,13 @@ class WebViewRenderer {
         }
         return nodes;
     }
+    getPhysicalParent(model: DOMModel): DOMElementModel {
+        const parent = this.mapping[model.parentId];
+        if (parent.type == DOMType.Marker) {
+            return this.getPhysicalParent(parent);
+        }
+        return parent as DOMElementModel;
+    }
     render(model: DOMModel): Node[] {
         this.mapping[model.id] = model;
         switch (model.type) {
@@ -74,56 +81,65 @@ class WebViewRenderer {
             case DOMType.Element: {
                 const elementModel: DOMElementModel = model as DOMElementModel;
                 const dom = document.createElement(elementModel.tag);
-                for (const key of Object.getOwnPropertyNames(elementModel.attributes)) {
-                    const value = elementModel.attributes[key];
-                    dom.setAttribute(key, value);
-                }
-                for (const key of Object.getOwnPropertyNames(elementModel.events)) {
-                    const event = elementModel.events[key];
-                    dom.addEventListener(key.replace("on", ""), (arg) => {
-                        const param: any = {};
-                        for (const key of Object.getOwnPropertyNames(arg)) {
-                            const value = arg[key];
-                            const type = typeof value;
-                            if (type === "number" || type === "string" || type === "boolean") {
-                                param[key] = value;
-                            }
-                        }
-                        window.location.href = window.location.protocol + "//__event__?" + "id=" + event.id + "&v=" + encodeURI(JSON.stringify(param));
-                    });
-                }
-                const sortedChildren = this.getValues(elementModel.children).sort((a, b) => {
-                    return a.sequenceNumber - b.sequenceNumber;
-                });
-                for (const child of sortedChildren) {
-                    const childNodes = this.render(child);
-                    for (const node of childNodes) {
-                        dom.appendChild(node);
+                if (elementModel.attributes) {
+                    for (const key of Object.getOwnPropertyNames(elementModel.attributes)) {
+                        const value = elementModel.attributes[key];
+                        dom.setAttribute(key, value);
                     }
                 }
-                //for (const key of Object.getOwnPropertyNames(elementModel.children)) {
-                //    const childNodes = this.render(elementModel.children[key]);
-                //    for (const node of childNodes) {
-                //        dom.appendChild(node);
-                //    }
-                //}
+                if (elementModel.events) {
+                    for (const key of Object.getOwnPropertyNames(elementModel.events)) {
+                        const event = elementModel.events[key];
+                        dom.addEventListener(key.replace("on", ""), (arg) => {
+                            const param: any = {};
+                            for (const key of Object.getOwnPropertyNames(arg)) {
+                                const value = arg[key];
+                                const type = typeof value;
+                                if (type === "number" || type === "string" || type === "boolean") {
+                                    param[key] = value;
+                                }
+                            }
+                            window.location.href = window.location.protocol + "//__event__?" + "id=" + event.id + "&v=" + encodeURI(JSON.stringify(param));
+                        });
+                    }
+                }
+                if (elementModel.children) {
+                    const sortedChildren = this.getValues(elementModel.children).sort((a, b) => {
+                        return a.sequenceNumber - b.sequenceNumber;
+                    });
+                    for (const child of sortedChildren) {
+                        const childNodes = this.render(child);
+                        for (const node of childNodes) {
+                            dom.appendChild(node);
+                        }
+                    }
+                    //for (const key of Object.getOwnPropertyNames(elementModel.children)) {
+                    //    const childNodes = this.render(elementModel.children[key]);
+                    //    for (const node of childNodes) {
+                    //        dom.appendChild(node);
+                    //    }
+                    //}
+                } else
+                    elementModel.children = {};
                 model.nodes = [dom];
                 return model.nodes;
             }
             case DOMType.Marker: {
                 const markerModel: DOMElementModel = model as DOMElementModel;
-                const keys = Object.getOwnPropertyNames(markerModel.children);
                 model.nodes = [];
-                const opening = document.createComment(`Start ${markerModel.tag||""}`);
+                const opening = document.createComment(`Start ${markerModel.tag || ""}`);
                 model.nodes.push(opening);
-                const nds = keys.map(c => this.render(markerModel.children[c]));
-                nds.reduce((prev: Node[], cur: Node[], i: number, nds: Node[][]) => {
-                    for (const c of cur) {
-                        model.nodes.push(c);
-                    }
-                    return model.nodes;
-                }, model.nodes);
-                const closing = document.createComment(`End ${markerModel.tag||""}`);
+                if (markerModel.children) {
+                    const keys = Object.getOwnPropertyNames(markerModel.children);
+                    const nds = keys.map(c => this.render(markerModel.children[c]));
+                    nds.reduce((prev: Node[], cur: Node[], i: number, nds: Node[][]) => {
+                        for (const c of cur) {
+                            model.nodes.push(c);
+                        }
+                        return model.nodes;
+                    }, model.nodes);
+                }
+                const closing = document.createComment(`End ${markerModel.tag || ""}`);
                 model.nodes.push(closing);
                 return model.nodes;
             }
@@ -135,12 +151,15 @@ class WebViewRenderer {
         if (parent) {
             const parentElementModel = parent as DOMElementModel;
             delete parentElementModel.children[model.id];
+            parentElementModel.nodes = parentElementModel.nodes.filter(n => !model.nodes.some(node => node == n));
         }
-        model.nodes.forEach(n => n.parentNode.removeChild(n));
+        model.nodes.forEach(n => n.parentNode?.removeChild(n));
         if (model.type === DOMType.Element || model.type === DOMType.Marker) {
             const elementModel: DOMElementModel = model as DOMElementModel;
-            for (const key of Object.getOwnPropertyNames(elementModel.children)) {
-                this.removeRecursive(elementModel.children[key]);
+            if (elementModel.children) {
+                for (const key of Object.getOwnPropertyNames(elementModel.children)) {
+                    this.removeRecursive(elementModel.children[key]);
+                }
             }
         }
     }
@@ -150,16 +169,18 @@ class WebViewRenderer {
             this.removeRecursive(existingModel);
         } else if (!existingModel) {
             const newNodes = this.render(newModel);
-            const parent = this.mapping[newModel.parentId] as DOMElementModel;
+            const parent = this.getPhysicalParent(newModel);// this.mapping[newModel.parentId] as DOMElementModel;
             const parentNode = parent.nodes[0];
             let reference: DOMModel = null;
-            this.getValues(parent.children).some(c => {
-                if (c.sequenceNumber > newModel.sequenceNumber) {
-                    reference = c;
-                    return true;
-                }
-                return false;
-            });
+            if (parent.children) {
+                this.getValues(parent.children).some(c => {
+                    if (c.sequenceNumber > newModel.sequenceNumber) {
+                        reference = c;
+                        return true;
+                    }
+                    return false;
+                });
+            }
             const referenceNode = reference?.nodes[0];
             newNodes.forEach(node => parentNode.insertBefore(node, referenceNode));
             parent.children[newModel.id] = newModel;
@@ -190,7 +211,7 @@ class WebViewRenderer {
                 }
                 case DOMType.Element: {
                     const elementModel: DOMElementModel = newModel as DOMElementModel;
-                    const element = elementModel.nodes[0] as Element;
+                    const element = existingModel.nodes[0] as Element;
                     const newAttributeKeys = Object.getOwnPropertyNames(elementModel.attributes);
                     for (const key of newAttributeKeys) {
                         element.setAttribute(key, elementModel.attributes[key]);
@@ -206,30 +227,30 @@ class WebViewRenderer {
         }
     }
     firstReceived = true;
-    update(models: DOMModel[]) {
-        if (this.firstReceived) {
+    update(models: DOMModel[], forceFirstUpdate: boolean) {
+        if (this.firstReceived || forceFirstUpdate) {
             const html = this.render(models[0])[1];//TODO: auto detect index 1
             let n = 0;
             while (document.head.childNodes.length > n) {
                 const item = document.head.childNodes.item(n);
-                if (!(item instanceof Element) || !(item as Element).hasAttribute("static"))
+                //if (!(item instanceof Element) || !(item as Element).hasAttribute("static"))
                     item.remove();
-                else
-                    n++;
+                //else
+                //    n++;
             }
             n = 0;
             while (document.body.childNodes.length > n) {
                 const item = document.body.childNodes.item(n);
-                if (!(item instanceof Element) || !(item as Element).hasAttribute("static"))
+                //if (!(item instanceof Element) || !(item as Element).hasAttribute("static"))
                     item.remove();
-                else
-                    n++;
+                //else
+                //    n++;
             }
-            while (html.childNodes[1].childNodes.length > 0) {//TODO: auto detect index 1
-                document.head.appendChild(html.childNodes[1].childNodes.item(0));
+            while (html.childNodes[0].childNodes.length > 0) {//TODO: auto detect index 1
+                document.head.appendChild(html.childNodes[0].childNodes.item(0));
             }
-            while (html.childNodes[3].childNodes.length > 0) {//TODO: auto detect index 3
-                document.body.appendChild(html.childNodes[3].childNodes.item(0));
+            while (html.childNodes[1].childNodes.length > 0) {//TODO: auto detect index 3
+                document.body.appendChild(html.childNodes[1].childNodes.item(0));
             }
             this.firstReceived = false;
         } else {
@@ -237,6 +258,11 @@ class WebViewRenderer {
                 this.patch(model);
             }
         }
+    }
+
+    execute(fn: string, param: any):any {
+        const f = new Function(fn);
+        return f.call(this, param);
     }
 }
 

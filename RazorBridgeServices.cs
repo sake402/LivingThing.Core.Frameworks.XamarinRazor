@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using Microsoft.JSInterop;
 using System;
 using System.IO;
 using XF = Xamarin.Forms;
@@ -12,10 +13,12 @@ using XRF = LivingThing.Core.Frameworks.XamarinRazor.Forms;
 
 namespace LivingThing.Core.Frameworks.XamarinRazor
 {
-    public static class XamarinRazor
+    public static class Initializer
     {
         public static void UseXamarinRazor(this IServiceCollection services)
         {
+            services.AddTransient<IJSRuntime>((s) => WebViewJsRuntime.Current);
+            services.AddSingleton<WebViewNavigationManager>().AddSingleton<NavigationManager>((x) => x.GetRequiredService<WebViewNavigationManager>());
             services.AddTransient(typeof(Razor<>));
             services.AddSingleton<ComponentToParameterAdapter>().AddSingleton<IComponentAdapter<ComponentToParameterBridge>>(x => x.GetService<ComponentToParameterAdapter>()).AddSingleton<IComponentAdapter>(x => x.GetService<ComponentToParameterAdapter>());
             services.AddSingleton<ComponentToElementAdapter>().AddSingleton<IComponentAdapter<ComponentToXamarinBridge>>(x => x.GetService<ComponentToElementAdapter>()).AddSingleton<IComponentAdapter>(x => x.GetService<ComponentToElementAdapter>());
@@ -37,7 +40,7 @@ namespace LivingThing.Core.Frameworks.XamarinRazor
             services.AddSingleton<ShellNativeElementAdapter>().AddSingleton<INativeAdapter<XF.Shell>>(x => x.GetService<ShellNativeElementAdapter>()).AddSingleton<INativeAdapter>(x => x.GetService<ShellNativeElementAdapter>());
 
             services.AddSingleton<DataTemplateNativeAdapter>().AddSingleton<INativeAdapter<XRF.DataTemplate>>(x => x.GetService<DataTemplateNativeAdapter>()).AddSingleton<INativeAdapter>(x => x.GetService<DataTemplateNativeAdapter>());
-            services.AddSingleton<DefaultNativeElementAdapter>().AddSingleton<INativeAdapter<XF.Element>>(x => x.GetService<DefaultNativeElementAdapter>()).AddSingleton<INativeAdapter>(x => x.GetService<DefaultNativeElementAdapter>());
+            services.AddSingleton<DefaultNativeElementAdapter>().AddSingleton<INativeAdapter<object>>(x => x.GetService<DefaultNativeElementAdapter>()).AddSingleton<INativeAdapter>(x => x.GetService<DefaultNativeElementAdapter>());
 
             //service provider doesnt support different open generics with different constraint parameter as it only tries to use the last registered one even if the constraint isnt valid
             //services.AddSingleton(typeof(IElementAdapter<>), typeof(LayoutViewAdapter<>));

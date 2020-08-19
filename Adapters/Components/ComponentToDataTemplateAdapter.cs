@@ -22,11 +22,13 @@ namespace LivingThing.Core.Frameworks.XamarinRazor.Forms
         /// prevent the datatemplate from rendering its child into the render tree yet to prevent passing null to the template
         /// </summary>
         /// <param name="builder"></param>
-        //protected override void BuildRenderTree(RenderTreeBuilder builder)
-        //{
-        //    //Add a dummy however to make sure the native adapter add function is called
-        //    builder.AddContent(1, "_");
-        //}
+        protected override void BuildRenderTree(RenderTreeBuilder builder)
+        {
+            if (ChildContent != null && Template == null)
+            {
+                base.BuildRenderTree(builder);
+            }
+        }
 
         //public override Task SetParametersAsync(ParameterView parameters)
         //{
@@ -77,22 +79,55 @@ namespace LivingThing.Core.Frameworks.XamarinRazor.Adapters.Components
     internal class ComponentToDataTemplateAdapter : IComponentAdapter<DataTemplate>
     {
         //since we defer the call o childcontent of datatemplate to prevent passing null parameter to the user provided template,
-        //we have to add a dummy template to it here else there will be an exception that "LoadTemplate should not be null"
+        //we have to process the DaatTemplate here else exception "LoadTemplate should not be null"
         public object Adapt(DataTemplate component, IComponentAdapterController rootAdapter)
         {
             if (component.Template == null && component.ChildContent == null)
             {
                 throw new InvalidOperationException("DataTemplate must have either a Type or a ChildContent");
             }
-            component.Value = new XF.DataTemplate(() =>
+            XF.DataTemplate newDataTemplate = null;
+            if (component is DataTemplateTBase tbase && tbase.TemplateChildContent != null)
             {
-                if (component is DataTemplateTBase tbase && tbase.TemplateChildContent != null) //if template has a child content, default to an ampty ContentView
+                newDataTemplate = new XF.DataTemplate(() =>
+                {
                     return new CaptureCurrentObjectForDataTemplateAsContentView(rootAdapter.ServiceProvider, tbase.TemplateChildContent);
-                else if (component.Template != null)
-                    return Razor.Create<XF.Element>(rootAdapter.ServiceProvider, component.Template).Result;
+                });
+            }
+            //else if (component.ChildContent != null) //TODO: we might as well render this one into the intitial render tree inside BuildRenderTree method
+            //{
+            //    newDataTemplate = new XF.DataTemplate(() =>
+            //    {
+            //        return Razor.Create<DataTemplateComponent, XF.Element>(rootAdapter.ServiceProvider, null, (t) =>
+            //        {
+            //            t.ChildContent = (o) => b => b.AddContent(1, component.ChildContent);
+            //        }).Result;
+            //    });
+            //}
+            else if (component.Template != null)
+            {
+                if (typeof(ComponentBase).IsAssignableFrom(component.Template))
+                {
+                    newDataTemplate = new XF.DataTemplate(() => Razor.CreateAsync<XF.Element>(rootAdapter.ServiceProvider, component.Template).Result.Element);
+                }
                 else
-                    return Razor.Create<XF.Element>(rootAdapter.ServiceProvider, component.ChildContent).Result;
-            });
+                {
+                    newDataTemplate = new XF.DataTemplate(component.Template);
+                }
+            }
+            if (newDataTemplate != null)
+            {
+                component.Value = newDataTemplate;
+            }
+            //component.Value = new XF.DataTemplate(() =>
+            //{
+            //    if (component is DataTemplateTBase tbase && tbase.TemplateChildContent != null) //if template has a child content, default to an ampty ContentView
+            //        return new CaptureCurrentObjectForDataTemplateAsContentView(rootAdapter.ServiceProvider, tbase.TemplateChildContent);
+            //    else if (component.Template != null)
+            //        return Razor.Create<XF.Element>(rootAdapter.ServiceProvider, component.Template).Result;
+            //    else
+            //        return Razor.Create<XF.Element>(rootAdapter.ServiceProvider, component.ChildContent).Result;
+            //});
             return component;
         }
     }

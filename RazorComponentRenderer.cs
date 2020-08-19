@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Text;
+using System.Reflection;
 using System.Threading.Tasks;
 using Xamarin.Forms;
 using XF = Xamarin.Forms;
@@ -31,6 +32,8 @@ namespace LivingThing.Core.Frameworks.XamarinRazor
             return AddComponent<TRootElement>(typeof(TComponent), parentElement, (o)=> parameterSetter?.Invoke((TComponent)o));
         }
 
+
+        IComponent RootComponent;
         public async Task<TRootElement> AddComponent<TRootElement>(Type componentType, Element parentElement, Action<object> parameterSetter) where TRootElement:class
         {
             ComponentAdapterController adapter = null;
@@ -44,27 +47,70 @@ namespace LivingThing.Core.Frameworks.XamarinRazor
                 Adapters[componentId] = adapter;
 
                 await RenderRootComponentAsync(componentId).ConfigureAwait(false);
+            RootComponent = component;
             //}).ConfigureAwait(false);
             if (adapter.RootElement is BridgeComponentBase @base)
                 return @base.Native as TRootElement;
             return adapter.RootElement as TRootElement;
         }
 
+        MethodInfo invokeAsync;
+        MethodInfo stateHasChanged;
+        Action rerender;
+
+        public void ReRender()
+        {
+            invokeAsync ??= typeof(ComponentBase).GetMethod("InvokeAsync", bindingAttr: BindingFlags.NonPublic | BindingFlags.Instance, types: new Type[] { typeof(Action) }, binder: null, modifiers: null);
+            stateHasChanged ??= typeof(ComponentBase).GetMethod("StateHasChanged", BindingFlags.NonPublic | BindingFlags.Instance);
+            rerender ??= () => stateHasChanged.Invoke(RootComponent, new object[] { });
+            invokeAsync.Invoke(RootComponent, new object[] { rerender });
+        }
+
+        void PrintException(Exception exception)
+        {
+            Debug.WriteLine($"{nameof(RazorComponentRenderer)} exception type '{exception?.GetType().Name}': '{exception?.Message}' => \r\n{exception.StackTrace}");
+            if (exception.InnerException != null)
+            {
+                PrintException(exception.InnerException);
+            }
+        }
+
         protected override void HandleException(Exception exception)
         {
-            Debug.WriteLine($"{nameof(HandleException)} called with '{exception?.GetType().Name}': '{exception?.Message}'");
-
+            PrintException(exception);
             XF.Device.InvokeOnMainThreadAsync(() =>
             {
                 XF.Application.Current.MainPage = GetErrorPageForException(exception);
             });
         }
 
+        private static XF.View  GetInnerExceptioView(Exception exception)
+        {
+            if (exception == null)
+                return new StackLayout();
+            return new StackLayout()
+            {
+                Children =
+                {
+                    new XF.Label
+                    {
+                        FontSize = XF.Device.GetNamedSize(XF.NamedSize.Medium, typeof(XF.Label)),
+                        Text = exception?.Message,
+                    },
+                    new XF.Label
+                    {
+                        FontSize = XF.Device.GetNamedSize(XF.NamedSize.Small, typeof(XF.Label)),
+                        Text = exception?.StackTrace,
+                    },
+                    GetInnerExceptioView(exception?.InnerException)
+                }
+            };
+        }
         private static XF.ContentPage GetErrorPageForException(Exception exception)
         {
             var errorPage = new XF.ContentPage()
             {
-                Title = "Unhandled exception",
+                Title = $"Unhandled exception({exception.GetType().Name})",
                 BackgroundColor=XF.Color.White,
                 Content = new XF.StackLayout
                 {
@@ -83,13 +129,18 @@ namespace LivingThing.Core.Frameworks.XamarinRazor
                         },
                         new XF.ScrollView
                         {
-                            Content =
-                                new XF.Label
+                            Content = new StackLayout()
+                            {
+                                Children =
                                 {
-                                    FontSize = XF.Device.GetNamedSize(XF.NamedSize.Small, typeof(XF.Label)),
-                                    Text = exception?.StackTrace,
-                                },
-
+                                    new XF.Label
+                                    {
+                                        FontSize = XF.Device.GetNamedSize(XF.NamedSize.Small, typeof(XF.Label)),
+                                        Text = exception?.StackTrace,
+                                    },
+                                    GetInnerExceptioView(exception?.InnerException)
+                                }
+                            }   
                         },
                     },
                 },

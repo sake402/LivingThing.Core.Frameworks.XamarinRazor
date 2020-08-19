@@ -300,7 +300,7 @@ namespace LivingThing.Core.Frameworks.XamarinRazor
             }
         }
 
-        void SetText(View view, string text)
+        void SetText(object view, string text)
         {
             if (view is XF.Label label)
             {
@@ -378,6 +378,7 @@ namespace LivingThing.Core.Frameworks.XamarinRazor
                                     var childAdapter = new ComponentAdapterController(Renderer, frame.Component, element, this);
                                     Renderer.Adapters[frame.ComponentId] = childAdapter;
                                     break;
+                                case RenderTreeFrameType.Markup:
                                 case RenderTreeFrameType.Text:
                                     var componentType = Component.GetType();
                                     var textProperty = componentType.GetProperty("Text");
@@ -393,17 +394,17 @@ namespace LivingThing.Core.Frameworks.XamarinRazor
                                         Add(!string.IsNullOrEmpty(trimmedText) ? new XF.Label() { Text = frame.TextContent.Trim() } : null, edit.SiblingIndex, false);
                                     }
                                     break;
-                                case RenderTreeFrameType.Markup: //convert markups to label
-                                    //if (!string.IsNullOrEmpty(frame.TextContent.Trim()))
-                                    {
-                                        var trimmedText = frame.MarkupContent.Trim();
-                                        Add(!string.IsNullOrEmpty(trimmedText) ? new XF.Label() { Text = frame.MarkupContent.Trim() } : null, edit.SiblingIndex, false);
-                                    }
-                                    //else
-                                    //{
-                                    //    AddContent(new XF.Span() { Text = frame.MarkupContent.Trim() }, edit.SiblingIndex);
-                                    //}
-                                    break;
+                                //case RenderTreeFrameType.Markup: //convert markups to label
+                                //    //if (!string.IsNullOrEmpty(frame.TextContent.Trim()))
+                                //    {
+                                //        var trimmedText = frame.MarkupContent.Trim();
+                                //        Add(!string.IsNullOrEmpty(trimmedText) ? new XF.Label() { Text = frame.MarkupContent.Trim() } : null, edit.SiblingIndex, false);
+                                //    }
+                                //    //else
+                                //    //{
+                                //    //    AddContent(new XF.Span() { Text = frame.MarkupContent.Trim() }, edit.SiblingIndex);
+                                //    //}
+                                //    break;
                                 default:
                                     throw new NotImplementedException($"Invalid Frame type: {frame.FrameType}");
                             }
@@ -422,8 +423,8 @@ namespace LivingThing.Core.Frameworks.XamarinRazor
                             }
                             else
                             {
-                                var children = GetChildren();
-                                var sibling = children[edit.SiblingIndex];
+                                //var children = GetChildren();
+                                var sibling = SiblingAtIndex[edit.SiblingIndex];
                                 SetText(sibling, frame.TextContent);
                             }
                         }
@@ -468,10 +469,10 @@ namespace LivingThing.Core.Frameworks.XamarinRazor
 
         public void Dispose()
         {
-            //if (Parent != null && RootElement != null)
-            //{
-            //    Parent.Remove(RootElement);
-            //}
+            if (Parent != null && RootElement != null)
+            {
+                Parent.Remove(RootElement);
+            }
             //if (RootElement is Element view)
             //{
             //    if (view.Parent != null)
